@@ -186,12 +186,27 @@ class ChartParser(nn.Module, parse_base.BaseParser):
         parser.load_state_dict(state_dict)
         return parser
 
-    def encode(self, example):
+    def determine_max_len(self):
+        tok_limit = (None if self.pretrained_model is None
+                     else self.retokenizer.tokenizer.model_max_length)
+        encoder_limit = (None if self.encoder is None
+                         else self.add_timing.timing_table.shape[0] - 2)
+        if tok_limit is None and encoder_limit is None:
+            return None
+        elif tok_limit is not None and encoder_limit is not None:
+            return min(tok_limit, encoder_limit)
+        elif tok_limit is not None:
+            return tok_limit
+        else:
+            return encoder_limit
+    
+
+    def encode(self, example, allow_long=False):
         if self.char_encoder is not None:
             encoded = self.retokenizer(example.words, return_tensors="np")
         else:
-            encoded = self.retokenizer(example.words, example.space_after)
-
+            encoded = self.retokenizer(example.words, example.space_after, allow_long=allow_long)
+            
         if example.tree is not None:
             encoded["span_labels"] = torch.tensor(
                 self.decoder.chart_from_tree(example.tree)
@@ -402,6 +417,14 @@ class ChartParser(nn.Module, parse_base.BaseParser):
                     ]
                 yield self.decoder.tree_from_chart(charts_np[i], leaves=leaves)
 
+    def encode_examples(self, examples):
+        training = self.training
+        self.eval()
+        encoded = [self.encode(example, allow_long=True) for example in examples]
+        self.train(training)
+        return encoded
+
+                
     def parse(
         self,
         examples,

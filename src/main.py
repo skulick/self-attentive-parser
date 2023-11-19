@@ -3,7 +3,8 @@ import functools
 import itertools
 import os.path
 import time
-
+import random
+from pprint import pprint
 import torch
 
 import numpy as np
@@ -42,6 +43,7 @@ def make_hparams():
         step_decay_factor=0.5,
         step_decay_patience=5,
         max_consecutive_decays=3,  # establishes a termination criterion
+        max_epochs=0,        
         # CharLSTM
         use_chars_lstm=False,
         d_char_emb=64,
@@ -86,25 +88,33 @@ def run_train(args, hparams):
     print("Manual seed for pytorch:", seed_from_numpy)
     torch.manual_seed(seed_from_numpy)
 
+    # added
+    random.seed(seed_from_numpy)
+    
     hparams.set_from_args(args)
     print("Hyperparameters:")
     hparams.print()
+    print()
+    pprint(vars(args))
+    print()    
 
     print("Loading training trees from {}...".format(args.train_path))
     train_treebank = treebanks.load_trees(
         args.train_path, args.train_path_text, args.text_processing
     )
+    print("Loaded {:,} training examples.".format(len(train_treebank)))    
     if hparams.max_len_train > 0:
         train_treebank = train_treebank.filter_by_length(hparams.max_len_train)
-    print("Loaded {:,} training examples.".format(len(train_treebank)))
+        print("len after filtering {:,}".format(len(train_treebank)))
 
     print("Loading development trees from {}...".format(args.dev_path))
     dev_treebank = treebanks.load_trees(
         args.dev_path, args.dev_path_text, args.text_processing
     )
+    print("Loaded {:,} development examples.".format(len(dev_treebank)))    
     if hparams.max_len_dev > 0:
         dev_treebank = dev_treebank.filter_by_length(hparams.max_len_dev)
-    print("Loaded {:,} development examples.".format(len(dev_treebank)))
+        print("len after filtering {:,}".format(len(dev_treebank)))
 
     print("Constructing vocabularies...")
     label_vocab = decode_chart.ChartDecoder.build_vocab(train_treebank.trees)
@@ -290,7 +300,10 @@ def run_train(args, hparams):
             print("Terminating due to lack of improvement in dev fscore.")
             break
 
-
+        if epoch == hparams.max_epochs:
+            print("Terminating due to max epochs reached.")
+            break
+        
 def run_test(args):
     print("Loading test trees from {}...".format(args.test_path))
     test_treebank = treebanks.load_trees(

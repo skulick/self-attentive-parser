@@ -33,15 +33,20 @@ def evalb(evalb_dir, gold_trees, predicted_trees, ref_gold_path=None):
     assert os.path.exists(evalb_dir)
     evalb_program_path = os.path.join(evalb_dir, "evalb")
     evalb_spmrl_program_path = os.path.join(evalb_dir, "evalb_spmrl")
-    assert os.path.exists(evalb_program_path) or os.path.exists(
-        evalb_spmrl_program_path
+    pyevalb_program_path = os.path.join(evalb_dir, "py_evalb.py")
+    assert (os.path.exists(evalb_program_path) or
+            os.path.exists(evalb_spmrl_program_path) or
+            os.path.exists(pyevalb_program_path)
     )
 
     if os.path.exists(evalb_program_path):
         evalb_param_path = os.path.join(evalb_dir, "nk.prm")
-    else:
+    elif os.path.exists(evalb_spmrl_program_path):
         evalb_program_path = evalb_spmrl_program_path
         evalb_param_path = os.path.join(evalb_dir, "spmrl.prm")
+    else:
+        evalb_program_path = pyevalb_program_path        
+        evalb_param_path = os.path.join(evalb_dir, "ptb_prm2.json")
 
     assert os.path.exists(evalb_program_path)
     assert os.path.exists(evalb_param_path)

@@ -146,7 +146,7 @@ class Retokenizer:
                     "to the sequence."
                 )
 
-    def __call__(self, words, space_after, **kwargs):
+    def __call__(self, words, space_after, allow_long=False, **kwargs):
         example = retokenize(self.tokenizer, words, space_after, **kwargs)
         if self.is_t5:
             # decoder_input_ids (which are shifted wrt input_ids) will be created after
@@ -175,10 +175,16 @@ class Retokenizer:
                     example["input_ids"].append(self.tokenizer.eos_token_id)
                     example["attention_mask"].append(1)
             if num_tokens > self.tokenizer.model_max_length:
-                raise ValueError(
-                    f"Sentence of length {num_tokens} (in sub-word tokens) exceeds the "
-                    f"maximum supported length of {self.tokenizer.model_max_length}"
-                )
+                if allow_long:
+                    print('warning:'
+                          f"Sentence of length {num_tokens} (in sub-word tokens) exceeds the "
+                          f"maximum supported length of {self.tokenizer.model_max_length}"                    
+                    )
+                else:
+                    raise ValueError(
+                        f"Sentence of length {num_tokens} (in sub-word tokens) exceeds the "
+                        f"maximum supported length of {self.tokenizer.model_max_length}"
+                    )
             start_token_idx = (
                 self.start_token_idx
                 if self.start_token_idx >= 0

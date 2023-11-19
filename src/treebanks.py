@@ -216,6 +216,15 @@ def load_trees(const_path, text_path=None, text_processing="default"):
         for tree in trees:
             words = ptb_unescape.ptb_unescape(tree.leaves())
             sp_after = ptb_unescape.guess_space_after(tree.leaves())
+            # added
+            sp_after[-1] = False
+            sents.append((words, sp_after))
+    elif text_processing == "ppceme":
+        sents = []
+        for tree in trees:
+            words = ptb_unescape.ptb_unescape(tree.leaves())
+            sp_after = [True for _ in words]
+            sp_after[-1] = False            
             sents.append((words, sp_after))
     else:
         raise ValueError(f"Bad value for text_processing: {text_processing}")
