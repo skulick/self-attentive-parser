@@ -428,13 +428,15 @@ class ChartParser(nn.Module, parse_base.BaseParser):
     def parse(
         self,
         examples,
+        encoded=None,
         return_compressed=False,
         return_scores=False,
         subbatch_max_tokens=None,
     ):
         training = self.training
         self.eval()
-        encoded = [self.encode(example) for example in examples]
+        if encoded is None:
+            encoded = [self.encode(example) for example in examples]
         if subbatch_max_tokens is not None:
             res = subbatching.map(
                 self._parse_encoded,

@@ -12,7 +12,7 @@ import itertools
 import torch
 from benepar import parse_chart
 from benepar.parse_base import BaseInputExample
-from benepar.ptb_unescape import ptb_unescape, guess_space_after, guess_space_after_ftd
+from benepar.ptb_unescape import ptb_unescape, guess_space_after
 from parse_util import filter_by_len
 from parse_util import make_dummy_parses
 from parse_util import reinsert_dummy_parses

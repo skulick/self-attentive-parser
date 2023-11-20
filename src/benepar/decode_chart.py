@@ -257,6 +257,15 @@ class ChartDecoder:
         tree = uncollapse_unary(tree)
         return tree
 
+    def make_dummy_parse(self, leaves):
+        """Make dummy tree for trees that were excluded from parsing
+
+        leaves is list of (leaf-str, pos)
+        """
+        children = [nltk.Tree(pos, [word]) for (word, pos) in leaves]
+        tree = nltk.Tree('TOP', [nltk.Tree('FLAT', children)])
+        return tree
+
 
 class SpanClassificationMarginLoss(nn.Module):
     def __init__(self, force_root_constituent=True, reduction="mean"):
