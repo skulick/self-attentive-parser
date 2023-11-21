@@ -16,7 +16,7 @@ from benepar import parse_chart
 import evaluate
 import learning_rates
 import treebanks
-
+import ppceme_transform
 
 def format_elapsed(start_time):
     elapsed_time = int(time.time() - start_time)
@@ -232,18 +232,36 @@ def run_train(args, hparams):
                 },
                 best_dev_model_path + ".pt",
             )
-
-    data_loader = torch.utils.data.DataLoader(
-        train_treebank,
-        batch_size=hparams.batch_size,
-        shuffle=True,
-        collate_fn=functools.partial(
-            parser.encode_and_collate_subbatches,
-            subbatch_max_tokens=args.subbatch_max_tokens,
-        ),
+    if args.transform is None:
+        # make dataloader outside epoch loop if there are no transforms
+        print('making dataloader outside epoch loop')        
+        data_loader = torch.utils.data.DataLoader(
+            train_treebank,
+            batch_size=hparams.batch_size,
+            shuffle=True,
+            collate_fn=functools.partial(
+                parser.encode_and_collate_subbatches,
+                subbatch_max_tokens=args.subbatch_max_tokens,
+            ),
     )
     for epoch in itertools.count(start=1):
         epoch_start_time = time.time()
+
+        if args.transform is not None:
+            print(f'transforming treebank for epoch {epoch}')
+            new_treebank = ppceme_transform.transform(train_treebank)
+            print(f'transform done, time elapsd = {format_elapsed(epoch_start_time)}')
+            # put this inside to recreate each time
+            data_loader = torch.utils.data.DataLoader(
+                new_treebank,
+                batch_size=hparams.batch_size,
+                shuffle=True,
+                collate_fn=functools.partial(
+                    parser.encode_and_collate_subbatches,
+                    subbatch_max_tokens=args.subbatch_max_tokens,
+                ),
+            )            
+        
 
         for batch_num, batch in enumerate(data_loader, start=1):
             optimizer.zero_grad()
@@ -389,6 +407,7 @@ def main():
     subparser.add_argument("--subbatch-max-tokens", type=int, default=2000)
     subparser.add_argument("--parallelize", action="store_true")
     subparser.add_argument("--print-vocabs", action="store_true")
+    subparser.add_argument("--transform", type=str, default=None)    
 
     subparser = subparsers.add_parser("test")
     subparser.set_defaults(callback=run_test)
