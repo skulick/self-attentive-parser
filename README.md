@@ -1,3 +1,34 @@
+# Parser for Early Modern English
+
+This is a fork of the [Berkeley Neural Parser](https://github.com/nikitakit/self-attentive-parser).  The modified parser was used for the work in [Parsing “Early English Books Online” for Linguistic Search](https://aclanthology.org/2023.scil-1.19/) and related papers.  For information on how to use this parser for that work, see the [repository for that work](https://github.com/skulick/emeparse).
+
+Here we just describe the installation for this parser.  It it mostly the same as in the [Training](#training) documation for the original parse, in the documentation we have included below.  There are two additions after those following directions:
+
+1. The package [ppctree](https://github.com/skulick/ppctree) needs to be installed. This can be done with
+```
+git clone https://github.com/skulick/ppctree.git
+cd ppctree
+pip install .
+```
+
+2. The library [pyevalb](https://github.com/skulick2/pyevalb) needs to be installed.  This can be done with
+```
+cd self-attentive-parser
+git clone https://github.com/skulick2/pyevalb.git
+```
+
+This is currently just a collection of scripts that are run from within `src/evaluate.py`, as an
+alternative to `EVALB` and `EVALB_SPMRL`, and so should pyevalb should be a sister to those directories.
+
+In future updates `ppctree` will be loaded from PyPI and `pyevalb` will be installed as a package.
+
+The file `self-attentive-parser/changes-from-orig.txt` details the changes made to the original parser.
+
+Following is the original documentation
+
+---
+
+
 # Berkeley Neural Parser
 
 A high-accuracy parser with models for 11 languages, implemented in Python. Based on [Constituency Parsing with a Self-Attentive Encoder](https://arxiv.org/abs/1805.01052) from ACL 2018, with additional changes described in [Multilingual Constituency Parsing with Self-Attention and Pre-Training](https://arxiv.org/abs/1812.11760).

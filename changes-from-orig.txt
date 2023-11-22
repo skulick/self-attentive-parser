@@ -1,0 +1,68 @@
+This file lists the changes made to the original version of benepar 2.0, at
+https://github.com/nikitakit/self-attentive-parser, from which this was forked.
+
+src/treebanks.py
+----------------
+(1) added a case for text_processing=="ppceme" in load_trees, which sets
+every word to have a space after, since it's assumed to be parsing text which
+has already been tokenized.
+(2) added sp_after[-1]=False for the last word, for text_processing=="default"
+
+src/evaluate.py
+---------------
+(1) added py_evalb.py in evalb
+
+src/main.py
+---------------
+(1) added random.seed (and import random)
+(2) added data augmentation.  imports ppceme_transform, and --transform
+parameter for train. If args.transform is not None (can be anything) then
+ppceme_transform.transform is called at the beginning of each epoch to
+transform train_treebank
+(3) added max_epochs parameter for train, and a clause at the end of run_train
+to check for it
+(4) imports ppprint and pprint the args
+(5) prints length before and after filtering of train and dev by length
+
+src/benepar/decode_chart.py
+---------------------------
+(1) added make_dummy_parse to ChartDecoder
+
+src/benepar/parse_chart.py
+---------------------------
+(1) added determine_max_len to ChartParser
+(2) added allow_long parameter to encode, which gets passed to self.retokenizer
+(3) added encode_examples to ChartParser
+(4) added encoded parameter to parse.  If encoded is not None, then it doesn't
+call self.encode(example), since the encoded versions were passed in
+
+src/benepar/retokenization.py
+-----------------------------
+(1) added allow_long=False parameter to __call__. If True, then it doesn't
+raise an error if a sentence is too long, but just prints it out.
+
+added src/parse.py
+-----------------------------
+Reads in the text from a file and parses it.
+Calls chart_parser.determine_max_len to get the max subword len allowed.
+Calls chart_parser.encode_examples to encode all the examples.  This calls
+encode for each sentence, with allow_long=True, to encode them regardless of how
+long they are.  It then filters out the ones that are too long, and passes
+in the rest to chart_parser.parse, using the encoded parameter, since it's
+already encoded them.
+
+added src/parse_util.py
+-----------------------
+A few helper functions for parse.py. make_dummy_parses, to make the default
+flat parses for sentences that were not sent to the parser because they
+were too long, calls decode_chart.make_dummy_parse
+
+added src/ppceme_transform.py
+-----------------------------
+randomly changes characters to the bullet character in the
+train treebank.  Called by parse.py
+
+added EVALB2
+----------------
+copy of EVAL except with some constants increased, to account for longer
+sentences
