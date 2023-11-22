@@ -1,8 +1,8 @@
 # Parser for Early Modern English
 
-This is a fork of the [Berkeley Neural Parser](https://github.com/nikitakit/self-attentive-parser).  The modified parser was used for the work in [Parsing “Early English Books Online” for Linguistic Search](https://aclanthology.org/2023.scil-1.19/) and related papers.  For information on how to use this parser for that work, see the [repository for that work](https://github.com/skulick/emeparse).
+This is a fork of the [Berkeley Neural Parser](https://github.com/nikitakit/self-attentive-parser).  This modified parser was used for the work in [Parsing “Early English Books Online” for Linguistic Search](https://aclanthology.org/2023.scil-1.19/) and related papers.  For information on how to use this parser for that work, see the [repository for that work](https://github.com/skulick/emeparse).
 
-Here we just describe the installation for this parser.  It it mostly the same as in the [Training](#training) documation for the original parse, in the documentation we have included below.  There are two additions after those following directions:
+Here we just describe the installation for this parser.  It it mostly the same as in the [Training](#training) documentation for the original parse, included below.  There are two additions after those following directions:
 
 1. The package [ppctree](https://github.com/skulick/ppctree) needs to be installed. This can be done with
 ```
