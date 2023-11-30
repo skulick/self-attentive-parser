@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 import nltk
 from nltk.corpus.reader.bracket_parse import BracketParseCorpusReader
-import tokenizations
+#import tokenizations
 import torch
 
 from benepar import ptb_unescape
