@@ -24,6 +24,12 @@ to check for it
 (4) imports ppprint and pprint the args
 (5) prints length before and after filtering of train and dev by length
 
+src/export.py
+-------------
+(1) modified export parameter to be model_dir instead of model_path,
+with the code now finding the model to export in the model_dir directory.
+This was done for convenience in our training scripts.
+
 src/benepar/decode_chart.py
 ---------------------------
 (1) added make_dummy_parse to ChartDecoder

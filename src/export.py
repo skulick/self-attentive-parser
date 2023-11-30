@@ -2,6 +2,7 @@ import argparse
 import functools
 import itertools
 import os.path
+import glob
 import time
 
 import torch
@@ -169,8 +170,14 @@ def run_export(args):
     else:
         test_treebank = None
 
-    print("Loading model from {}...".format(args.model_path))
-    parser = Parser(args.model_path, batch_size=args.batch_size)
+    # modified this to find the model in the given directory, instead
+    # of taking a specific model
+    model_path_l = glob.glob(f"{args.model_dir}/model_dev=*.pt")
+    assert len(model_path_l) == 1, \
+        f'expected one model {model_path_l}'
+    model_path = model_path_l[0]
+    print("Loading model from {}...".format(model_path))
+    parser = Parser(model_path, batch_size=args.batch_size)
     model = parser._parser
     if model.pretrained_model is None:
         raise ValueError(
@@ -290,7 +297,8 @@ def main():
 
     subparser = subparsers.add_parser("export")
     subparser.set_defaults(callback=run_export)
-    subparser.add_argument("--model-path", type=str, required=True)
+    #subparser.add_argument("--model-path", type=str, required=True)
+    subparser.add_argument("--model-dir", type=str, required=True)
     subparser.add_argument("--output-dir", type=str, required=True)
     subparser.add_argument("--evalb-dir", default="EVALB/")
     subparser.add_argument("--test-path", type=str, default=None)
