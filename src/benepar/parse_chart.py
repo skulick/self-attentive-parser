@@ -8,7 +8,6 @@ import torch.nn.functional as F
 
 from transformers import AutoConfig, AutoModel
 
-from . import char_lstm
 from . import decode_chart
 from . import nkutil
 from .partitioned_transformer import (
@@ -45,44 +44,31 @@ class ChartParser(nn.Module, parse_base.BaseParser):
         self.d_model = hparams.d_model
 
         self.char_encoder = None
-        self.pretrained_model = None
-        if hparams.use_chars_lstm:
-            assert (
-                not hparams.use_pretrained
-            ), "use_chars_lstm and use_pretrained are mutually exclusive"
-            self.retokenizer = char_lstm.RetokenizerForCharLSTM(self.char_vocab)
-            self.char_encoder = char_lstm.CharacterLSTM(
-                max(self.char_vocab.values()) + 1,
-                hparams.d_char_emb,
-                hparams.d_model // 2,  # Half-size to leave room for
-                # partitioned positional encoding
-                char_dropout=hparams.char_lstm_input_dropout,
+        self.pretrained_model = None            
+        if pretrained_model_path is None:
+            self.retokenizer = retokenization.Retokenizer(
+                hparams.pretrained_model, retain_start_stop=True
             )
-        elif hparams.use_pretrained:
-            if pretrained_model_path is None:
-                self.retokenizer = retokenization.Retokenizer(
-                    hparams.pretrained_model, retain_start_stop=True
-                )
-                self.pretrained_model = AutoModel.from_pretrained(
-                    hparams.pretrained_model
-                )
-            else:
-                self.retokenizer = retokenization.Retokenizer(
-                    pretrained_model_path, retain_start_stop=True
-                )
-                self.pretrained_model = AutoModel.from_config(
-                    AutoConfig.from_pretrained(pretrained_model_path)
-                )
-            d_pretrained = self.pretrained_model.config.hidden_size
+            self.pretrained_model = AutoModel.from_pretrained(
+                hparams.pretrained_model
+            )
+        else:
+            self.retokenizer = retokenization.Retokenizer(
+                pretrained_model_path, retain_start_stop=True
+            )
+            self.pretrained_model = AutoModel.from_config(
+                AutoConfig.from_pretrained(pretrained_model_path)
+            )
+        d_pretrained = self.pretrained_model.config.hidden_size
 
-            if hparams.use_encoder:
-                self.project_pretrained = nn.Linear(
-                    d_pretrained, hparams.d_model // 2, bias=False
-                )
-            else:
-                self.project_pretrained = nn.Linear(
-                    d_pretrained, hparams.d_model, bias=False
-                )
+        if hparams.use_encoder:
+            self.project_pretrained = nn.Linear(
+                d_pretrained, hparams.d_model // 2, bias=False
+            )
+        else:
+            self.project_pretrained = nn.Linear(
+                d_pretrained, hparams.d_model, bias=False
+            )
 
         if hparams.use_encoder:
             self.morpho_emb_dropout = FeatureDropout(hparams.morpho_emb_dropout)
@@ -135,28 +121,13 @@ class ChartParser(nn.Module, parse_base.BaseParser):
             reduction="sum", force_root_constituent=hparams.force_root_constituent
         )
 
-        self.parallelized_devices = None
-
     @property
     def device(self):
-        if self.parallelized_devices is not None:
-            return self.parallelized_devices[0]
-        else:
-            return next(self.f_label.parameters()).device
+        return next(self.f_label.parameters()).device
 
     @property
     def output_device(self):
-        if self.parallelized_devices is not None:
-            return self.parallelized_devices[1]
-        else:
-            return next(self.f_label.parameters()).device
-
-    def parallelize(self, *args, **kwargs):
-        self.parallelized_devices = (torch.device("cuda", 0), torch.device("cuda", 1))
-        for child in self.children():
-            if child != self.pretrained_model:
-                child.to(self.output_device)
-        self.pretrained_model.parallelize(*args, **kwargs)
+        return next(self.f_label.parameters()).device
 
     @classmethod
     def from_trained(cls, model_path):
@@ -276,11 +247,7 @@ class ChartParser(nn.Module, parse_base.BaseParser):
                 )
             )
 
-        if self.char_encoder is not None:
-            assert isinstance(self.char_encoder, char_lstm.CharacterLSTM)
-            char_ids = batch["char_ids"].to(self.device)
-            extra_content_annotations = self.char_encoder(char_ids, valid_token_mask)
-        elif self.pretrained_model is not None:
+        if self.pretrained_model is not None:
             input_ids = batch["input_ids"].to(self.device)
             words_from_tokens = batch["words_from_tokens"].to(self.output_device)
             pretrained_attention_mask = batch["attention_mask"].to(self.device)

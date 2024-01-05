@@ -157,10 +157,7 @@ def run_parse(args):
     model_path = args.model_path[0]
     print("Loading model from {}...".format(model_path))
     parser = parse_chart.ChartParser.from_trained(model_path)
-    if args.parallelize:
-        parser.parallelize()
-    elif torch.cuda.is_available():
-        parser.cuda()
+    parser.cuda()
 
     in_fname = args.test_path
     out_fname = args.output_path

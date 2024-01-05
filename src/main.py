@@ -1,3 +1,4 @@
+import sys
 import argparse
 import functools
 import itertools
@@ -9,7 +10,8 @@ import torch
 
 import numpy as np
 
-from benepar import char_lstm
+from torch.cuda.amp import GradScaler
+
 from benepar import decode_chart
 from benepar import nkutil
 from benepar import parse_chart
@@ -29,6 +31,7 @@ def format_elapsed(start_time):
     return elapsed_string
 
 
+# TODO: Just define a config class using dataclasses. And that way everything get d*** well document.
 def make_hparams():
     return nkutil.HParams(
         # Data processing
@@ -43,7 +46,8 @@ def make_hparams():
         step_decay_factor=0.5,
         step_decay_patience=5,
         max_consecutive_decays=3,  # establishes a termination criterion
-        max_epochs=0,        
+        max_epochs=0,
+        fp16=False,
         # CharLSTM
         use_chars_lstm=False,
         d_char_emb=64,
@@ -73,6 +77,46 @@ def make_hparams():
     )
 
 
+# TODO: For reference only. Consult when we re-integrate AMP code.
+def train_step_amp(optimizer, parser, subbatch, subbatch_size):
+            optimizer.zero_grad()
+            parser.train()
+
+            batch_loss_value = 0.0
+            n_subbatches = len(batch)
+            for subbatch_size, subbatch in batch:
+
+                with torch.autocast(device_type='cuda', dtype=torch.float16):
+                    loss = parser.compute_loss(subbatch)
+                    loss = loss / n_subbatches
+
+                # Accumulates scaled gradients                                                                                                                                                                                                                                                         
+                scaler.scale(loss).backward()
+
+                # get value for logging                                                                                                                                                                                                                                                                
+                loss_value = float(loss.data.cpu().numpy())
+                batch_loss_value += loss_value
+                # not sure about this                                                                                                                                                                                                                                                                  
+                #if loss_value > 0:                                                                                                                                                                                                                                                                    
+                #    loss.backward()                                                                                                                                                                                                                                                                   
+                del loss
+
+                total_processed += subbatch_size
+                current_processed += subbatch_size
+
+            # clip gradients                                                                                                                                                                                                                                                                           
+            scaler.unscale_(optimizer)
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+		clippable_parameters, grad_clip_threshold
+            )
+
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad()
+            # no longer done since using AMP                                                                                                                                                                                                                                                           
+            #optimizer.step()
+
+            
 def run_train(args, hparams):
     if args.numpy_seed is not None:
         print("Setting numpy random seed to {}...".format(args.numpy_seed))
@@ -118,10 +162,7 @@ def run_train(args, hparams):
 
     print("Constructing vocabularies...")
     label_vocab = decode_chart.ChartDecoder.build_vocab(train_treebank.trees)
-    if hparams.use_chars_lstm:
-        char_vocab = char_lstm.RetokenizerForCharLSTM.build_vocab(train_treebank.sents)
-    else:
-        char_vocab = None
+    char_vocab = None
 
     tag_vocab = set()
     for tree in train_treebank.trees:
@@ -147,9 +188,7 @@ def run_train(args, hparams):
         char_vocab=char_vocab,
         hparams=hparams,
     )
-    if args.parallelize:
-        parser.parallelize()
-    elif torch.cuda.is_available():
+    if torch.cuda.is_available():
         parser.cuda()
     else:
         print("Not using CUDA!")
@@ -239,11 +278,16 @@ def run_train(args, hparams):
             train_treebank,
             batch_size=hparams.batch_size,
             shuffle=True,
+            num_workers=4,  # TODO: Make this parameterized by config.
             collate_fn=functools.partial(
                 parser.encode_and_collate_subbatches,
                 subbatch_max_tokens=args.subbatch_max_tokens,
             ),
     )
+
+    # Create GradScaler once at beginning of training
+    scaler = GradScaler()
+    
     for epoch in itertools.count(start=1):
         epoch_start_time = time.time()
 
@@ -268,16 +312,23 @@ def run_train(args, hparams):
             parser.train()
 
             batch_loss_value = 0.0
+            n_subbatches = len(batch)
             for subbatch_size, subbatch in batch:
+                
                 loss = parser.compute_loss(subbatch)
+                    
+                # get value for logging
                 loss_value = float(loss.data.cpu().numpy())
                 batch_loss_value += loss_value
+                # not sure about this
                 if loss_value > 0:
                     loss.backward()
                 del loss
+                
                 total_processed += subbatch_size
                 current_processed += subbatch_size
 
+            # clip gradients
             grad_norm = torch.nn.utils.clip_grad_norm_(
                 clippable_parameters, grad_clip_threshold
             )
@@ -302,6 +353,7 @@ def run_train(args, hparams):
                     format_elapsed(start_time),
                 )
             )
+            sys.stdout.flush()
 
             if current_processed >= check_every:
                 current_processed -= check_every
@@ -341,8 +393,6 @@ def run_test(args):
     if args.no_predict_tags and parser.f_tag is not None:
         print("Removing part-of-speech tagging head...")
         parser.f_tag = None
-    if args.parallelize:
-        parser.parallelize()
     elif torch.cuda.is_available():
         parser.cuda()
 
@@ -405,7 +455,6 @@ def main():
     subparser.add_argument("--dev-path-text", type=str)
     subparser.add_argument("--text-processing", default="default")
     subparser.add_argument("--subbatch-max-tokens", type=int, default=2000)
-    subparser.add_argument("--parallelize", action="store_true")
     subparser.add_argument("--print-vocabs", action="store_true")
     subparser.add_argument("--transform", type=str, default=None)    
 
@@ -418,7 +467,6 @@ def main():
     subparser.add_argument("--test-path-raw", type=str)
     subparser.add_argument("--text-processing", default="default")
     subparser.add_argument("--subbatch-max-tokens", type=int, default=500)
-    subparser.add_argument("--parallelize", action="store_true")
     subparser.add_argument("--output-path", default="")
     subparser.add_argument("--no-predict-tags", action="store_true")
 

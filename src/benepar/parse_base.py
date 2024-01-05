@@ -189,11 +189,6 @@ class BaseParser(ABC):
         pass
 
     @abstractmethod
-    def parallelize(self, *args, **kwargs):
-        """Spread out pre-trained model layers across GPUs."""
-        pass
-
-    @abstractmethod
     def parse(
         self,
         examples: Iterable[BaseInputExample],
