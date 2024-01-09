@@ -5,7 +5,7 @@ This is useful during training when the batch size is too large to fit on GPU,
 meaning that gradient accumulation across multiple sub-batches must be used.
 It is also useful for batching examples during evaluation. Unlike a naive
 approach, this code groups examples with similar lengths to reduce the amount
-of wasted computation due to padding. 
+of wasted computation due to padding.
 """
 
 import numpy as np
@@ -22,19 +22,23 @@ def split(*data, costs, max_cost):
     Yields:
         (example_ids, *subbatch_data) tuples.
     """
+    def get_subbatch(data, costs_argsort, subbatch_size):
+        subbatch_item_ids = costs_argsort[:subbatch_size]
+        subbatch_data = [[items[i] for i in subbatch_item_ids] for items in data]
+        return (subbatch_item_ids,) + tuple(subbatch_data)
     costs = np.asarray(costs, dtype=int)
     costs_argsort = np.argsort(costs).tolist()
-
     subbatch_size = 1
-    while costs_argsort:
-        if subbatch_size == len(costs_argsort) or (
-            subbatch_size * costs[costs_argsort[subbatch_size]] > max_cost
-        ):
-            subbatch_item_ids = costs_argsort[:subbatch_size]
-            subbatch_data = [[items[i] for i in subbatch_item_ids] for items in data]
-            yield (subbatch_item_ids,) + tuple(subbatch_data)
+    while True:
+        subbatch_cost = subbatch_size * max(costs[costs_argsort[:subbatch_size]])
+        if subbatch_cost > max_cost:
+            subbatch_size = max(1, subbatch_size - 1)
+            yield get_subbatch(data, costs_argsort, subbatch_size)
             costs_argsort = costs_argsort[subbatch_size:]
             subbatch_size = 1
+        elif subbatch_size == len(costs_argsort):
+            yield get_subbatch(data, costs_argsort, subbatch_size)
+            break
         else:
             subbatch_size += 1
 

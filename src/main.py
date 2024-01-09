@@ -1,3 +1,4 @@
+import sys
 import argparse
 import functools
 import itertools
@@ -268,7 +269,12 @@ def run_train(args, hparams):
             parser.train()
 
             batch_loss_value = 0.0
-            for subbatch_size, subbatch in batch:
+            for sb_num, (subbatch_size, subbatch) in enumerate(batch):
+                ## DEBUG
+#                print(f'BATCH: {batch_num}/{sb_num}')
+#                print(f'SHAPE (TOKENS):  {subbatch["words_from_tokens"].size()}')
+#                print(f'SHAPE (SPIECES): {subbatch["input_ids"].size()}')
+                ## DEBUG
                 loss = parser.compute_loss(subbatch)
                 loss_value = float(loss.data.cpu().numpy())
                 batch_loss_value += loss_value
@@ -302,6 +308,7 @@ def run_train(args, hparams):
                     format_elapsed(start_time),
                 )
             )
+            sys.stdout.flush()
 
             if current_processed >= check_every:
                 current_processed -= check_every
