@@ -271,9 +271,9 @@ def run_train(args, hparams):
             batch_loss_value = 0.0
             for sb_num, (subbatch_size, subbatch) in enumerate(batch):
                 ## DEBUG
-#                print(f'BATCH: {batch_num}/{sb_num}')
-#                print(f'SHAPE (TOKENS):  {subbatch["words_from_tokens"].size()}')
-#                print(f'SHAPE (SPIECES): {subbatch["input_ids"].size()}')
+                #print(f'BATCH: {batch_num}/{sb_num}')
+                #print(f'SHAPE (TOKENS):  {subbatch["words_from_tokens"].size()}')
+                #print(f'SHAPE (SPIECES): {subbatch["input_ids"].size()}')
                 ## DEBUG
                 loss = parser.compute_loss(subbatch)
                 loss_value = float(loss.data.cpu().numpy())

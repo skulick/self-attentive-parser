@@ -30,6 +30,8 @@ def split(*data, costs, max_cost):
     costs_argsort = np.argsort(costs).tolist()
     subbatch_size = 1
     while True:
+        if not costs_argsort:
+            break
         subbatch_cost = subbatch_size * max(costs[costs_argsort[:subbatch_size]])
         if subbatch_cost > max_cost:
             subbatch_size = max(1, subbatch_size - 1)
