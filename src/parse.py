@@ -6,6 +6,7 @@ Three main aspects to this:
 (3) Checks if sentences are too long to parse, and if so substitutes with
 dummy flat parse
 """
+import sys
 import argparse
 import pathlib
 import itertools
@@ -57,15 +58,15 @@ def make_sentence_wrapper(text, text_processing):
     if text_processing == 'default':
         sp_after = guess_space_after(leaves)
         sp_after[-1] = False
-    elif text_processing == 'ftd':
-        sp_after = guess_space_after_ftd(leaves)
+    #elif text_processing == 'ftd':
+    #    sp_after = guess_space_after_ftd(leaves)
     else:
         sp_after = [True for _ in words]
         sp_after[-1] = False
     return SentenceWrapper(words, leaves, sp_after)
 
 
-def read_file_conll(fname, text_processing):
+def read_file_conll(fname, text_processing, word_col):
     """Read a file in our almost conll format"""
     def _is_divider(line):
         return line.strip() == ""
@@ -76,7 +77,8 @@ def read_file_conll(fname, text_processing):
                 lines2 = [line.rstrip('\n') for line in lines]
                 assert lines2[0].startswith('SENT'), 'something weird reading in pos'
                 lines2b = [line.split('\t') for line in lines2[1:]]
-                text = ' '.join([word for [_, word, _] in lines2b])
+                #text = ' '.join([word for [_, word, _] in lines2b])
+                text = ' '.join([line[word_col] for line in lines2b])
                 sents.append(make_sentence_wrapper(text, text_processing))
     return sents
 
@@ -169,7 +171,7 @@ def run_parse(args):
     if args.in_format == 'text':
         sents = read_file_text(in_fname, args.text_processing)
     elif args.in_format == 'conll':
-        sents = read_file_conll(in_fname, args.text_processing)
+        sents = read_file_conll(in_fname, args.text_processing, args.word_col)
     elif args.in_format == 'eebo':
         sents = read_file_eebo(in_fname, args.text_processing)
     else:
@@ -200,6 +202,8 @@ def main():
 
     parser.add_argument("--text-processing", default="default")
     parser.add_argument("--in-format", type=str, default='text')
+    parser.add_argument('--word-col', '-w',  type=int, default=1,
+                        help='column for conll file')    
     parser.add_argument("--max-word-len", type=int, default=0)
 
     parser.add_argument("--subbatch-max-tokens", type=int, default=500)
