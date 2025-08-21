@@ -72,3 +72,5 @@ added EVALB2
 ----------------
 copy of EVAL except with some constants increased, to account for longer
 sentences
+
+removed verboseTrue from main.run_train

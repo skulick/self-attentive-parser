@@ -169,7 +169,7 @@ def run_train(args, hparams):
         mode="max",
         factor=hparams.step_decay_factor,
         patience=hparams.step_decay_patience * hparams.checks_per_epoch,
-        verbose=True,
+        #verbose=True,
     )
 
     clippable_parameters = trainable_parameters
